@@ -70,6 +70,8 @@ Semaphore a2(0);
 // Semaphore b2(-6);
 Semaphore b1(0);
 Semaphore b2(0);
+Semaphore topEven(0);
+Semaphore topOdd(0);
 
 void* threadProdA1(void* arg)
 {
@@ -80,19 +82,23 @@ void* threadProdA1(void* arg)
         mutex.p();
         // std::cout << "A1\n";
         printf("A1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        if (buffer.countEven() < 10)
-        {
+        // if (buffer.countEven() < 10)
+        // {
+            a1.p();
             buffer.put(last);
             last = (last + 2) % 50;
 
+            topEven.v();
+            a2.v();
             if(buffer.countEven() + buffer.countOdd() >= 3)
                 b1.v();
-            if(buffer.countEven() + buffer.countOdd() >= 7)
-                b2.v();
-            a1.p();
-            a2.v();
-        }
-        mutex.v();
+            else
+                mutex.v();
+            // if(buffer.countEven() + buffer.countOdd() >= 7)
+            //     b2.v();
+            // a1.p();
+        // }
+        // mutex.v();
     }
 
     return NULL;
@@ -107,18 +113,22 @@ void* threadProdA2(void* arg)
         mutex.p();
         // std::cout << "A2\n";
         printf("A2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        if (buffer.countEven() > buffer.countOdd())
-        {
+        // if (buffer.countEven() > buffer.countOdd())
+        // {
+            a2.p();
             buffer.put(last);
             last = (last + 2) % 50;
 
-            if(buffer.countEven() + buffer.countOdd() >= 3)
-                b1.v();
+            // if(buffer.countEven() + buffer.countOdd() >= 3)
+            //     b1.v();
+            topOdd.v();
             if(buffer.countEven() + buffer.countOdd() >= 7)
                 b2.v();
-            a2.p();
-        }
-        mutex.v();
+            else
+                mutex.v();
+            // a2.p();
+        // }
+        // mutex.v();
     }
 
     return NULL;
@@ -132,19 +142,27 @@ void* threadConsB1(void* arg)
         mutex.p();
         printf("B1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
         // std::cout << "B1\n";
-        if (buffer.countEven() >= 3)
-        {
-            if(buffer.readFirst() % 2 == 0)
-            {
+        // if (buffer.countEven() >= 3)
+        // {
+            // if(buffer.readFirst() % 2 == 0)
+            // {
+                topEven.p();
+                b1.p();
                 buffer.get();
 
                 a1.v();
-                a2.p();
-                b1.p();
-                b2.p();
-            }
-        }
-        mutex.v();
+                if (buffer.readFirst() % 2 == 0)
+                    topEven.v();
+                if (buffer.countEven() > buffer.countOdd())
+                    a2.p();
+                else
+                    mutex.v();
+                // a2.p();
+                // b1.p();
+                // b2.p();
+            // }
+        // }
+        // mutex.v();
     }
 
     return NULL;
@@ -158,19 +176,28 @@ void* threadConsB2(void* arg)
         mutex.p();
         printf("B2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
         // std::cout << "B2" << " mutex: " << mutex.retV() << "\n";
-        if (buffer.countEven() >= 7)
-        {
-            if(buffer.readFirst() % 2 == 1)
-            {
+        // if (buffer.countEven() >= 7)
+        // {
+            // if(buffer.readFirst() % 2 == 1)
+            // {
+                topOdd.p();
+                b2.p();
                 buffer.get();
 
-                a1.v();
                 a2.v();
-                b1.p();
-                b2.p();
-            }
-        }
-        mutex.v();
+                if (buffer.readFirst() % 2 == 1)
+                    topOdd.v();
+                if (buffer.countEven() < 10)
+                    a1.p();
+                else
+                    mutex.v();
+                // a1.v();
+                // a2.v();
+                // b1.p();
+                // b2.p();
+            // }
+        // }
+        // mutex.v();
     }
 
     return NULL;
