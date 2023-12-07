@@ -27,8 +27,13 @@ public:
 #ifdef _WIN32
 	sem = CreateSemaphore( NULL, value, 1, NULL );
 #else
-     if( sem_init( & sem, 0, value ) != 0 )
+    auto semV = sem_init( & sem, 0, value );
+    std::cout << "sem_init: " << semV << std::endl;
+     if( semV != 0 )
+     {
        throw "sem_init: failed";
+
+     }
 #endif
   }
   ~Semaphore()
@@ -39,6 +44,13 @@ public:
 	  sem_destroy( & sem );
 #endif
   }
+
+    int retV()
+    {
+        int store;
+        sem_getvalue(&sem, &store);
+        return store;
+    }
 
   void p()
   {

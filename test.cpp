@@ -3,15 +3,12 @@
 #include <string>
 #include "monitor.h"
 
-int const threadsCounts = 3;
-// int const bufferSize = 9;
+int const threadsCounts = 4;
 
 class Buffer
 {
 private:
     std::vector<int> values;
-    // Semaphore mutex;
-    // bool readA, readB;
 
     void print(std::string name)
     {
@@ -28,19 +25,15 @@ public:
 
     void put(int value)
     {
-        // mutex.p();
         // Wstawienie elementu do bufora
         values.push_back(value);
         print("P");
-        // mutex.v();
     }
 
     int get()
     {
-        // mutex.p();
         int v = values.front();
         values.erase(values.begin());
-        // mutex.v();
         print("G");
         return v;
     }
@@ -52,79 +45,31 @@ public:
 
     int countEven()
     {
-        // mutex.p();
         int count = 0;
         for (auto v : values)
             if (v % 2 == 0)
                 ++count;
-        // mutex.v();
         return count;
     }
 
     int countOdd()
     {
-        // mutex.p();
         int count = 0;
         for (auto v : values)
             if (v % 2 == 1)
                 ++count;
-        // mutex.v();
         return count;
     }
-
-    // int getA()
-    // {
-    //     mutex.p();
-    //     // Odczytanie elementu z bufora (bez usuwania)
-    //     int v = values.front();
-    //     readA = true;
-    //     print("A read");
-    //     if (readB)
-    //     {
-    //         // usuniecie elementu z bufora
-    //         values.erase(values.begin());
-    //         print("A remove");
-    //         readA = readB = false;
-    //     }
-    //     mutex.v();
-    //     return v;
-    // }
-
-    // int getB()
-    // {
-    //     mutex.p();
-    //     // Odczytanie elementu z bufora (bez usuwania)
-    //     int v = values.front();
-    //     readB = true;
-    //     print("B read");
-    //     if (readA)
-    //     {
-    //         // usuniecie elementu z bufora
-    //         values.erase(values.begin());
-    //         print("B remove");
-    //         readA = readB = false;
-    //     }
-    //     mutex.v();
-    //     return v;
-    // }
 };
 
 Buffer buffer;
 Semaphore mutex(1);
 Semaphore a1(10);
 Semaphore a2(0);
-Semaphore b1(-2);
-Semaphore b2(-6);
-
-// void* threadProd(void* arg)
-// {
-//     for (int i = 0; i < 10; ++i)
-//     {
-//         buffer.put(i);
-//     }
-
-//     return NULL;
-// }
+// Semaphore b1(-2);
+// Semaphore b2(-6);
+Semaphore b1(0);
+Semaphore b2(0);
 
 void* threadProdA1(void* arg)
 {
@@ -133,13 +78,17 @@ void* threadProdA1(void* arg)
     while (true)
     {
         mutex.p();
+        // std::cout << "A1\n";
+        printf("A1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
         if (buffer.countEven() < 10)
         {
             buffer.put(last);
             last = (last + 2) % 50;
 
-            b1.v();
-            b2.v();
+            if(buffer.countEven() + buffer.countOdd() >= 3)
+                b1.v();
+            if(buffer.countEven() + buffer.countOdd() >= 7)
+                b2.v();
             a1.p();
             a2.v();
         }
@@ -156,13 +105,17 @@ void* threadProdA2(void* arg)
     while (true)
     {
         mutex.p();
+        // std::cout << "A2\n";
+        printf("A2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
         if (buffer.countEven() > buffer.countOdd())
         {
             buffer.put(last);
             last = (last + 2) % 50;
 
-            b1.v();
-            b2.v();
+            if(buffer.countEven() + buffer.countOdd() >= 3)
+                b1.v();
+            if(buffer.countEven() + buffer.countOdd() >= 7)
+                b2.v();
             a2.p();
         }
         mutex.v();
@@ -177,6 +130,8 @@ void* threadConsB1(void* arg)
     while (true)
     {
         mutex.p();
+        printf("B1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
+        // std::cout << "B1\n";
         if (buffer.countEven() >= 3)
         {
             if(buffer.readFirst() % 2 == 0)
@@ -201,6 +156,8 @@ void* threadConsB2(void* arg)
     while (true)
     {
         mutex.p();
+        printf("B2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
+        // std::cout << "B2" << " mutex: " << mutex.retV() << "\n";
         if (buffer.countEven() >= 7)
         {
             if(buffer.readFirst() % 2 == 1)
@@ -219,25 +176,6 @@ void* threadConsB2(void* arg)
     return NULL;
 }
 
-// void* threadConsA(void* arg)
-// {
-//     for (int i = 0; i < 17; ++i)
-//     {
-//         auto value = buffer.getA();
-//     }
-
-//     return NULL;
-// }
-
-// void* threadConsB(void* arg)
-// {
-//     for (int i = 0; i < 17; ++i)
-//     {
-//         auto value = buffer.getB();
-//     }
-
-//     return NULL;
-// }
 
 int main()
 {
@@ -245,12 +183,16 @@ int main()
 
     pthread_create(&tid[0], NULL, threadProdA1, NULL);
     pthread_create(&tid[1], NULL, threadProdA2, NULL);
-    // pthread_create(&tid[2], NULL, threadProd, NULL);
     pthread_create(&tid[2], NULL, threadConsB1, NULL);
     pthread_create(&tid[3], NULL, threadConsB2, NULL);
 
-    for (int i = 0; i < threadsCounts; ++i)
-        pthread_join(tid[i], (void**)NULL);
+    pthread_join(tid[0], (void**)NULL);
+    pthread_join(tid[1], (void**)NULL);
+    pthread_join(tid[2], (void**)NULL);
+    pthread_join(tid[3], (void**)NULL);
+
+    // for (int i = 0; i < threadsCounts; ++i)
+    //     pthread_join(tid[i], (void**)NULL);
 
     return 0;
 }
