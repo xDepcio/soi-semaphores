@@ -1,30 +1,17 @@
-// Mamy bufor FIFO na liczby całkowite.
-// * Procesy A1 generują kolejne liczby parzyste modulo 50, jeżeli w buforze jest mniej niż 10 liczb
-// parzystych.
-// * Procesy A2 generują kolejne liczby nieparzyste modulo 50, jeżeli liczb parzystych w buforze jest
-// więcej niż nieparzystych.
-// * Procesy B1 zjadają liczby parzyste pod warunkiem, że bufor zawiera co najmniej 3 liczby.
-// * Procesy B2 zjadają liczby nieparzyste, pod warunkiem, że bufor zawiera co najmniej 7 liczb.
-// W systemie może być dowolna liczba procesów każdego z typów. Zrealizuj wyżej wymienioną
-// funkcjonalność przy pomocy semaforów.
-// Zakładamy, że bufor FIFO poza standardowym put() i get() ma tylko metodę umożliwiającą
-// sprawdzenie liczby na wyjściu (bez wyjmowania) oraz posiada metody zliczające elementy
-// parzyste i nieparzyste. Zakładamy, że semafory mają tylko operacje P i V.
-
 #include <iostream>
 #include <vector>
 #include <string>
 #include "monitor.h"
 
-int const threadsCounts = 4;
-int const bufferSize = 9;
+int const threadsCounts = 3;
+// int const bufferSize = 9;
 
 class Buffer
 {
 private:
     std::vector<int> values;
-    Semaphore mutex;
-    bool readA, readB;
+    // Semaphore mutex;
+    // bool readA, readB;
 
     void print(std::string name)
     {
@@ -35,25 +22,26 @@ private:
     }
 
 public:
-    Buffer() : mutex(1), readA(false), readB(false)
+    Buffer()
     {
     }
 
     void put(int value)
     {
-        mutex.p();
+        // mutex.p();
         // Wstawienie elementu do bufora
         values.push_back(value);
         print("P");
-        mutex.v();
+        // mutex.v();
     }
 
     int get()
     {
-        mutex.p();
+        // mutex.p();
         int v = values.front();
         values.erase(values.begin());
-        mutex.v();
+        // mutex.v();
+        print("G");
         return v;
     }
 
@@ -64,23 +52,23 @@ public:
 
     int countEven()
     {
-        mutex.p();
+        // mutex.p();
         int count = 0;
         for (auto v : values)
             if (v % 2 == 0)
                 ++count;
-        mutex.v();
+        // mutex.v();
         return count;
     }
 
     int countOdd()
     {
-        mutex.p();
+        // mutex.p();
         int count = 0;
         for (auto v : values)
             if (v % 2 == 1)
                 ++count;
-        mutex.v();
+        // mutex.v();
         return count;
     }
 
@@ -122,46 +110,144 @@ public:
 };
 
 Buffer buffer;
+Semaphore mutex(1);
+Semaphore a1(10);
+Semaphore a2(0);
+Semaphore b1(-2);
+Semaphore b2(-6);
 
-void* threadProd(void* arg)
+// void* threadProd(void* arg)
+// {
+//     for (int i = 0; i < 10; ++i)
+//     {
+//         buffer.put(i);
+//     }
+
+//     return NULL;
+// }
+
+void* threadProdA1(void* arg)
 {
-    for (int i = 0; i < 10; ++i)
+    // puts modulo 50 even nums
+    int last = 0;
+    while (true)
     {
-        buffer.put(i);
+        mutex.p();
+        if (buffer.countEven() < 10)
+        {
+            buffer.put(last);
+            last = (last + 2) % 50;
+
+            b1.v();
+            b2.v();
+            a1.p();
+            a2.v();
+        }
+        mutex.v();
     }
 
     return NULL;
 }
 
-void* threadConsA(void* arg)
+void* threadProdA2(void* arg)
 {
-    for (int i = 0; i < 17; ++i)
+    // puts modulo 50 odd nums
+    int last = 1;
+    while (true)
     {
-        auto value = buffer.getA();
+        mutex.p();
+        if (buffer.countEven() > buffer.countOdd())
+        {
+            buffer.put(last);
+            last = (last + 2) % 50;
+
+            b1.v();
+            b2.v();
+            a2.p();
+        }
+        mutex.v();
     }
 
     return NULL;
 }
 
-void* threadConsB(void* arg)
+void* threadConsB1(void* arg)
 {
-    for (int i = 0; i < 17; ++i)
+    // eats even nums
+    while (true)
     {
-        auto value = buffer.getB();
+        mutex.p();
+        if (buffer.countEven() >= 3)
+        {
+            if(buffer.readTop() % 2 == 0)
+            {
+                buffer.get();
+
+                a1.v();
+                a2.p();
+                b1.p();
+                b2.p();
+            }
+        }
+        mutex.v();
     }
 
     return NULL;
 }
+
+void* threadConsB2(void* arg)
+{
+    // eats odd nums
+    while (true)
+    {
+        mutex.p();
+        if (buffer.countEven() >= 7)
+        {
+            if(buffer.readTop() % 2 == 1)
+            {
+                buffer.get();
+
+                a1.v();
+                a2.v();
+                b1.p();
+                b2.p();
+            }
+        }
+        mutex.v();
+    }
+
+    return NULL;
+}
+
+// void* threadConsA(void* arg)
+// {
+//     for (int i = 0; i < 17; ++i)
+//     {
+//         auto value = buffer.getA();
+//     }
+
+//     return NULL;
+// }
+
+// void* threadConsB(void* arg)
+// {
+//     for (int i = 0; i < 17; ++i)
+//     {
+//         auto value = buffer.getB();
+//     }
+
+//     return NULL;
+// }
 
 int main()
 {
     pthread_t tid[threadsCounts];
 
-    pthread_create(&tid[0], NULL, threadProd, NULL);
-    pthread_create(&tid[1], NULL, threadProd, NULL);
-    pthread_create(&tid[2], NULL, threadProd, NULL);
-    pthread_create(&tid[3], NULL, threadConsA, NULL);
-    pthread_create(&tid[4], NULL, threadConsB, NULL);
+    pthread_create(&tid[0], NULL, threadProdA1, NULL);
+    pthread_create(&tid[1], NULL, threadProdA2, NULL);
+    // pthread_create(&tid[2], NULL, threadProd, NULL);
+    pthread_create(&tid[2], NULL, threadConsB1, NULL);
+    pthread_create(&tid[3], NULL, threadConsB2, NULL);
 
     for (int i = 0; i < threadsCounts; ++i)
         pthread_join(tid[i], (void**)NULL);
