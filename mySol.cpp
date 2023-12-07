@@ -48,41 +48,77 @@ public:
         mutex.v();
     }
 
-    int getA()
+    int get()
     {
         mutex.p();
-        // Odczytanie elementu z bufora (bez usuwania)
         int v = values.front();
-        readA = true;
-        print("A read");
-        if (readB)
-        {
-            // usuniecie elementu z bufora
-            values.erase(values.begin());
-            print("A remove");
-            readA = readB = false;
-        }
+        values.erase(values.begin());
         mutex.v();
         return v;
     }
 
-    int getB()
+    int readTop()
+    {
+        return values.front();
+    }
+
+    int countEven()
     {
         mutex.p();
-        // Odczytanie elementu z bufora (bez usuwania)
-        int v = values.front();
-        readB = true;
-        print("B read");
-        if (readA)
-        {
-            // usuniecie elementu z bufora
-            values.erase(values.begin());
-            print("B remove");
-            readA = readB = false;
-        }
+        int count = 0;
+        for (auto v : values)
+            if (v % 2 == 0)
+                ++count;
         mutex.v();
-        return v;
+        return count;
     }
+
+    int countOdd()
+    {
+        mutex.p();
+        int count = 0;
+        for (auto v : values)
+            if (v % 2 == 1)
+                ++count;
+        mutex.v();
+        return count;
+    }
+
+    // int getA()
+    // {
+    //     mutex.p();
+    //     // Odczytanie elementu z bufora (bez usuwania)
+    //     int v = values.front();
+    //     readA = true;
+    //     print("A read");
+    //     if (readB)
+    //     {
+    //         // usuniecie elementu z bufora
+    //         values.erase(values.begin());
+    //         print("A remove");
+    //         readA = readB = false;
+    //     }
+    //     mutex.v();
+    //     return v;
+    // }
+
+    // int getB()
+    // {
+    //     mutex.p();
+    //     // Odczytanie elementu z bufora (bez usuwania)
+    //     int v = values.front();
+    //     readB = true;
+    //     print("B read");
+    //     if (readA)
+    //     {
+    //         // usuniecie elementu z bufora
+    //         values.erase(values.begin());
+    //         print("B remove");
+    //         readA = readB = false;
+    //     }
+    //     mutex.v();
+    //     return v;
+    // }
 };
 
 Buffer buffer;
