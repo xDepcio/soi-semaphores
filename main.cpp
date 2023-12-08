@@ -4,73 +4,16 @@
 #include "monitor.h"
 #include "buffer.h"
 
-#define THREAD_SLEEP_TIME 0.5
+#define THREAD_SLEEP_TIME 1
 #define MAX_THREADS_COUNT 100
 
-// class Buffer
-// {
-// private:
-//     std::vector<int> values;
-
-//     void print(std::string name)
-//     {
-//         std::cout << "### " << name << " " << values.size() << "[";
-//         for (auto v : values)
-//             std::cout << v << ",";
-//         std::cout << "] ###\n";
-//     }
-
-// public:
-//     Buffer(std::vector<int> initialVals = {}) : values(initialVals)
-//     {
-//     }
-
-//     void put(int value, std::string debugMsg = "")
-//     {
-//         values.push_back(value);
-//         print("PUT (" + debugMsg + ") ->");
-//     }
-
-//     int get(std::string debugMsg = "")
-//     {
-//         int v = values.front();
-//         values.erase(values.begin());
-//         print("GET (" + debugMsg + ") ->");
-//         return v;
-//     }
-
-//     int readFirst()
-//     {
-//         return values.front();
-//     }
-
-//     int countEven()
-//     {
-//         int count = 0;
-//         for (auto v : values)
-//             if (v % 2 == 0)
-//                 ++count;
-//         return count;
-//     }
-
-//     int countOdd()
-//     {
-//         int count = 0;
-//         for (auto v : values)
-//             if (v % 2 == 1)
-//                 ++count;
-//         return count;
-//     }
-// };
-
+unsigned int numOfProdEvenWaiting=0, numOfProdOddWaiting=0, numOfConsEvenWaiting=0, numOfConsOddWaiting=0;
 Buffer buffer;
 Semaphore mutex(1);
 Semaphore prodEvenSem(0);
 Semaphore prodOddSem(0);
 Semaphore consEvenSem(0);
 Semaphore consOddSem(0);
-
-unsigned int numOfProdEvenWaiting=0, numOfProdOddWaiting=0, numOfConsEvenWaiting=0, numOfConsOddWaiting=0;
 
 
 bool canProdEven()
