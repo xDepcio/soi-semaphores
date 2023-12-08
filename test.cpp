@@ -3,6 +3,8 @@
 #include <string>
 #include "monitor.h"
 
+#define THREAD_SLEEP_TIME 0.5
+
 int const threadsCounts = 4;
 
 class Buffer
@@ -12,7 +14,7 @@ private:
 
     void print(std::string name)
     {
-        std::cout << "\n###" << name << " " << values.size() << "[";
+        std::cout << "\n### " << name << " " << values.size() << "[";
         for (auto v : values)
             std::cout << v << ",";
         std::cout << "]###\n";
@@ -23,18 +25,17 @@ public:
     {
     }
 
-    void put(int value)
+    void put(int value, std::string debugMsg = "")
     {
-        // Wstawienie elementu do bufora
         values.push_back(value);
-        print("P");
+        print("PUT (" + debugMsg + ") ->");
     }
 
-    int get()
+    int get(std::string debugMsg = "")
     {
         int v = values.front();
         values.erase(values.begin());
-        print("G");
+        print("GET (" + debugMsg + ") ->");
         return v;
     }
 
@@ -64,14 +65,37 @@ public:
 
 Buffer buffer;
 Semaphore mutex(1);
-Semaphore a1(10);
-Semaphore a2(0);
-// Semaphore b1(-2);
-// Semaphore b2(-6);
-Semaphore b1(0);
-Semaphore b2(0);
-Semaphore topEven(0);
-Semaphore topOdd(0);
+Semaphore prodEvenSem(0);
+Semaphore prodOddSem(0);
+Semaphore consEvenSem(0);
+Semaphore consOddSem(0);
+
+unsigned int numOfProdEvenWaiting=0, numOfProdOddWaiting=0, numOfConsEvenWaiting=0, numOfConsOddWaiting=0;
+
+
+bool canProdEven()
+{
+    return buffer.countEven() < 10;
+}
+
+bool canProdOdd()
+{
+    return buffer.countEven() > buffer.countOdd();
+}
+
+bool canConsEven()
+{
+    int totalCount = buffer.countEven() + buffer.countOdd();
+    bool isTopEven = buffer.readFirst() % 2 == 0;
+    return totalCount >= 3 && isTopEven;
+}
+
+bool canConsOdd()
+{
+    int totalCount = buffer.countEven() + buffer.countOdd();
+    bool isTopOdd = buffer.readFirst() % 2 == 1;
+    return totalCount >= 7 && isTopOdd;
+}
 
 void* threadProdA1(void* arg)
 {
@@ -80,36 +104,27 @@ void* threadProdA1(void* arg)
     while (true)
     {
         mutex.p();
-        // std::cout << "A1\n";
-        printf("A1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        if (!(buffer.countEven() < 10))
+        if(!canProdEven())
         {
+            numOfProdEvenWaiting++;
             mutex.v();
-            a1.p();
-            buffer.put(last);
-            last = (last + 2) % 50;
-
-            topEven.v();
-            a2.v();
-            if(buffer.countEven() + buffer.countOdd() >= 3)
-                b1.v();
-            // else
-            //     mutex.v();
-            // if(buffer.countEven() + buffer.countOdd() >= 7)
-            //     b2.v();
-            // a1.p();
+            prodEvenSem.p();
+            numOfProdEvenWaiting--;
         }
-        else{
-            a1.p();
-            buffer.put(last);
-            last = (last + 2) % 50;
 
-            topEven.v();
-            a2.v();
-            if(buffer.countEven() + buffer.countOdd() >= 3)
-                b1.v();
-        }
-        mutex.v();
+        buffer.put(last, "A1 " + std::to_string(last));
+        last = (last + 2) % 50;
+
+        if (numOfProdOddWaiting > 0 && canProdOdd())
+            prodOddSem.v();
+        else if (numOfConsEvenWaiting > 0 && canConsEven())
+            consEvenSem.v();
+        else if (numOfConsOddWaiting > 0 && canConsOdd())
+            consOddSem.v();
+        else
+            mutex.v();
+
+        sleep(THREAD_SLEEP_TIME);
     }
 
     return NULL;
@@ -122,36 +137,27 @@ void* threadProdA2(void* arg)
     while (true)
     {
         mutex.p();
-        // std::cout << "A2\n";
-        printf("A2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        if (!(buffer.countEven() > buffer.countOdd()))
+        if(!canProdOdd())
         {
+            numOfProdOddWaiting++;
             mutex.v();
-            a2.p();
-            buffer.put(last);
-            last = (last + 2) % 50;
-
-            // if(buffer.countEven() + buffer.countOdd() >= 3)
-            //     b1.v();
-            topOdd.v();
-            if(buffer.countEven() + buffer.countOdd() >= 7)
-                b2.v();
-            // else
-            //     mutex.v();
-            // a2.p();
+            prodOddSem.p();
+            numOfProdOddWaiting--;
         }
-        else {
-            a2.p();
-            buffer.put(last);
-            last = (last + 2) % 50;
 
-            // if(buffer.countEven() + buffer.countOdd() >= 3)
-            //     b1.v();
-            topOdd.v();
-            if(buffer.countEven() + buffer.countOdd() >= 7)
-                b2.v();
-        }
-        mutex.v();
+        buffer.put(last, "A2 " + std::to_string(last));
+        last = (last + 2) % 50;
+
+        if (numOfProdEvenWaiting > 0 && canProdEven())
+            prodEvenSem.v();
+        else if (numOfConsEvenWaiting > 0 && canConsEven())
+            consEvenSem.v();
+        else if (numOfConsOddWaiting > 0 && canConsOdd())
+            consOddSem.v();
+        else
+            mutex.v();
+
+        sleep(THREAD_SLEEP_TIME);
     }
 
     return NULL;
@@ -163,59 +169,26 @@ void* threadConsB1(void* arg)
     while (true)
     {
         mutex.p();
-        printf("B1, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        // std::cout << "B1\n";
-        // if (buffer.countEven() >= 3)
-        // {
-            // if(buffer.readFirst() % 2 == 0)
-            // {
-                // topEven.p();
-                if(!(buffer.countEven()+buffer.countOdd() >= 3))
-                {
-                    mutex.v();
-                    b1.p();
-                    buffer.get();
+        if(!canConsEven())
+        {
+            numOfConsEvenWaiting++;
+            mutex.v();
+            consEvenSem.p();
+            numOfConsEvenWaiting--;
+        }
 
-                    a1.v();
-                    if (buffer.readFirst() % 2 == 0)
-                        topEven.v();
-                    if(buffer.countEven() > buffer.countOdd())
-                        a2.v();
-                }
-                else{
-                    b1.p();
-                    buffer.get();
+        buffer.get("B1");
 
-                    a1.v();
-                    if (buffer.readFirst() % 2 == 0)
-                        topEven.v();
-                    if(buffer.countEven() > buffer.countOdd())
-                        a2.v();
-                }
-                // b1.p();
-                // buffer.get();
+        if (numOfProdEvenWaiting > 0 && canProdEven())
+            prodEvenSem.v();
+        else if (numOfProdOddWaiting > 0 && canProdOdd())
+            prodOddSem.v();
+        else if (numOfConsOddWaiting > 0 && canConsOdd())
+            consOddSem.v();
+        else
+            mutex.v();
 
-                // a1.v();
-                // if (buffer.readFirst() % 2 == 0)
-                //     topEven.v();
-                // if(buffer.countEven() > buffer.countOdd())
-                //     a2.v();
-                // else
-                mutex.v();
-
-                // a1.v();
-                // if (buffer.readFirst() % 2 == 0)
-                //     topEven.v();
-                // if (buffer.countEven() > buffer.countOdd())
-                //     a2.p();
-                // else
-                //     mutex.v();
-                // a2.p();
-                // b1.p();
-                // b2.p();
-            // }
-        // }
-        // mutex.v();
+        sleep(THREAD_SLEEP_TIME);
     }
 
     return NULL;
@@ -227,60 +200,26 @@ void* threadConsB2(void* arg)
     while (true)
     {
         mutex.p();
-        printf("B2, mutex %d, a1: %d, a2: %d, b1: %d, b2: %d\n", mutex.retV(), a1.retV(), a2.retV(), b1.retV(), b2.retV());
-        // std::cout << "B2" << " mutex: " << mutex.retV() << "\n";
-        // if (buffer.countEven() >= 7)
-        // {
-            // if(buffer.readFirst() % 2 == 1)
-            // {
-            if(!(buffer.countEven()+buffer.countOdd() >= 7))
-            {
-                mutex.v();
-                b2.p();
-                buffer.get();
-
-                a2.v();
-                if (buffer.readFirst() % 2 == 1)
-                    topOdd.v();
-                if(buffer.countEven() < 10)
-                    a1.v();
-            }
-            else {
-                b2.p();
-                buffer.get();
-
-                a2.v();
-                if (buffer.readFirst() % 2 == 1)
-                    topOdd.v();
-                if(buffer.countEven() < 10)
-                    a1.v();
-            }
+        if(!canConsOdd())
+        {
+            numOfConsOddWaiting++;
             mutex.v();
-                // topOdd.p();
-                // b2.p();
-                // buffer.get();
+            consOddSem.p();
+            numOfConsOddWaiting--;
+        }
 
-                // a2.v();
-                // if (buffer.readFirst() % 2 == 1)
-                //     topOdd.v();
-                // if(buffer.countEven() < 10)
-                //     a1.v();
-                // else
-                //     mutex.v();
-                // a2.v();
-                // if (buffer.readFirst() % 2 == 1)
-                //     topOdd.v();
-                // if (buffer.countEven() < 10)
-                //     a1.p();
-                // else
-                //     mutex.v();
-                // a1.v();
-                // a2.v();
-                // b1.p();
-                // b2.p();
-            // }
-        // }
-        // mutex.v();
+        buffer.get("B2");
+
+        if (numOfProdEvenWaiting > 0 && canProdEven())
+            prodEvenSem.v();
+        else if (numOfProdOddWaiting > 0 && canProdOdd())
+            prodOddSem.v();
+        else if (numOfConsEvenWaiting > 0 && canConsEven())
+            consEvenSem.v();
+        else
+            mutex.v();
+
+        sleep(THREAD_SLEEP_TIME);
     }
 
     return NULL;

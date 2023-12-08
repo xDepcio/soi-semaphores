@@ -111,10 +111,10 @@ public:
 
 Buffer buffer;
 Semaphore mutex(1);
-Semaphore a1(10);
-Semaphore a2(0);
-Semaphore b1(-2);
-Semaphore b2(-6);
+Semaphore prodEvenSem(10);
+Semaphore prodOddSem(0);
+Semaphore consEvenSem(-2);
+Semaphore consOddSem(-6);
 
 // void* threadProd(void* arg)
 // {
@@ -138,10 +138,10 @@ void* threadProdA1(void* arg)
             buffer.put(last);
             last = (last + 2) % 50;
 
-            b1.v();
-            b2.v();
-            a1.p();
-            a2.v();
+            consEvenSem.v();
+            consOddSem.v();
+            prodEvenSem.p();
+            prodOddSem.v();
         }
         mutex.v();
     }
@@ -161,9 +161,9 @@ void* threadProdA2(void* arg)
             buffer.put(last);
             last = (last + 2) % 50;
 
-            b1.v();
-            b2.v();
-            a2.p();
+            consEvenSem.v();
+            consOddSem.v();
+            prodOddSem.p();
         }
         mutex.v();
     }
@@ -183,10 +183,10 @@ void* threadConsB1(void* arg)
             {
                 buffer.get();
 
-                a1.v();
-                a2.p();
-                b1.p();
-                b2.p();
+                prodEvenSem.v();
+                prodOddSem.p();
+                consEvenSem.p();
+                consOddSem.p();
             }
         }
         mutex.v();
@@ -207,10 +207,10 @@ void* threadConsB2(void* arg)
             {
                 buffer.get();
 
-                a1.v();
-                a2.v();
-                b1.p();
-                b2.p();
+                prodEvenSem.v();
+                prodOddSem.v();
+                consEvenSem.p();
+                consOddSem.p();
             }
         }
         mutex.v();
