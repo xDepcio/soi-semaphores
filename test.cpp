@@ -86,15 +86,13 @@ bool canProdOdd()
 bool canConsEven()
 {
     int totalCount = buffer.countEven() + buffer.countOdd();
-    bool isTopEven = buffer.readFirst() % 2 == 0;
-    return totalCount >= 3 && isTopEven;
+    return totalCount >= 3 && buffer.readFirst() % 2 == 0;
 }
 
 bool canConsOdd()
 {
     int totalCount = buffer.countEven() + buffer.countOdd();
-    bool isTopOdd = buffer.readFirst() % 2 == 1;
-    return totalCount >= 7 && isTopOdd;
+    return totalCount >= 7 && buffer.readFirst() % 2 == 1;
 }
 
 void* threadProdA1(void* arg)
@@ -230,7 +228,7 @@ int main()
 {
     pthread_t tid[threadsCounts];
 
-    pthread_create(&tid[0], NULL, threadProdA2, NULL);
+    pthread_create(&tid[0], NULL, threadConsB1, NULL);
     // pthread_create(&tid[1], NULL, threadProdA2, NULL);
     // pthread_create(&tid[2], NULL, threadConsB1, NULL);
     // pthread_create(&tid[3], NULL, threadConsB2, NULL);
