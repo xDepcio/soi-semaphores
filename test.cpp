@@ -17,7 +17,7 @@ private:
         std::cout << "\n### " << name << " " << values.size() << "[";
         for (auto v : values)
             std::cout << v << ",";
-        std::cout << "]###\n";
+        std::cout << "] ###\n";
     }
 
 public:
@@ -230,15 +230,15 @@ int main()
 {
     pthread_t tid[threadsCounts];
 
-    pthread_create(&tid[0], NULL, threadProdA1, NULL);
-    pthread_create(&tid[1], NULL, threadProdA2, NULL);
-    pthread_create(&tid[2], NULL, threadConsB1, NULL);
-    pthread_create(&tid[3], NULL, threadConsB2, NULL);
+    pthread_create(&tid[0], NULL, threadProdA2, NULL);
+    // pthread_create(&tid[1], NULL, threadProdA2, NULL);
+    // pthread_create(&tid[2], NULL, threadConsB1, NULL);
+    // pthread_create(&tid[3], NULL, threadConsB2, NULL);
 
     pthread_join(tid[0], (void**)NULL);
-    pthread_join(tid[1], (void**)NULL);
-    pthread_join(tid[2], (void**)NULL);
-    pthread_join(tid[3], (void**)NULL);
+    // pthread_join(tid[1], (void**)NULL);
+    // pthread_join(tid[2], (void**)NULL);
+    // pthread_join(tid[3], (void**)NULL);
 
     // for (int i = 0; i < threadsCounts; ++i)
     //     pthread_join(tid[i], (void**)NULL);
