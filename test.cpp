@@ -4,8 +4,7 @@
 #include "monitor.h"
 
 #define THREAD_SLEEP_TIME 0.5
-
-int const threadsCounts = 4;
+#define MAX_THREADS_COUNT 100
 
 class Buffer
 {
@@ -14,14 +13,14 @@ private:
 
     void print(std::string name)
     {
-        std::cout << "\n### " << name << " " << values.size() << "[";
+        std::cout << "### " << name << " " << values.size() << "[";
         for (auto v : values)
             std::cout << v << ",";
         std::cout << "] ###\n";
     }
 
 public:
-    Buffer()
+    Buffer(std::vector<int> initialVals = {}) : values(initialVals)
     {
     }
 
@@ -97,7 +96,6 @@ bool canConsOdd()
 
 void* threadProdA1(void* arg)
 {
-    // puts modulo 50 even nums
     int last = 0;
     while (true)
     {
@@ -130,7 +128,6 @@ void* threadProdA1(void* arg)
 
 void* threadProdA2(void* arg)
 {
-    // puts modulo 50 odd nums
     int last = 1;
     while (true)
     {
@@ -163,7 +160,6 @@ void* threadProdA2(void* arg)
 
 void* threadConsB1(void* arg)
 {
-    // eats even nums
     while (true)
     {
         mutex.p();
@@ -194,7 +190,6 @@ void* threadConsB1(void* arg)
 
 void* threadConsB2(void* arg)
 {
-    // eats odd nums
     while (true)
     {
         mutex.p();
@@ -226,20 +221,17 @@ void* threadConsB2(void* arg)
 
 int main()
 {
-    pthread_t tid[threadsCounts];
+    pthread_t tid[MAX_THREADS_COUNT];
 
-    pthread_create(&tid[0], NULL, threadConsB1, NULL);
-    // pthread_create(&tid[1], NULL, threadProdA2, NULL);
-    // pthread_create(&tid[2], NULL, threadConsB1, NULL);
-    // pthread_create(&tid[3], NULL, threadConsB2, NULL);
+    pthread_create(&tid[0], NULL, threadProdA1, NULL);
+    pthread_create(&tid[1], NULL, threadProdA2, NULL);
+    pthread_create(&tid[2], NULL, threadConsB1, NULL);
+    pthread_create(&tid[3], NULL, threadConsB2, NULL);
 
     pthread_join(tid[0], (void**)NULL);
-    // pthread_join(tid[1], (void**)NULL);
-    // pthread_join(tid[2], (void**)NULL);
-    // pthread_join(tid[3], (void**)NULL);
-
-    // for (int i = 0; i < threadsCounts; ++i)
-    //     pthread_join(tid[i], (void**)NULL);
+    pthread_join(tid[1], (void**)NULL);
+    pthread_join(tid[2], (void**)NULL);
+    pthread_join(tid[3], (void**)NULL);
 
     return 0;
 }
